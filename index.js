@@ -1,8 +1,11 @@
 const { response } = require("express");
 const express = require("express");
 const app = express();
+const morgan = require("morgan");
+const cors = require("cors");
 
 app.use(express.json());
+app.use(cors());
 
 let persons = [
   {
@@ -21,6 +24,12 @@ let persons = [
     id: 3,
   },
 ];
+
+morgan.token("body", (req) => {
+  return JSON.stringify(req.body);
+});
+
+app.use(morgan(":method :url :status :response-time ms :body"));
 
 app.get("/info", (req, res) => {
   res.send(`<p>Phonebook has info for ${persons.length}</p> <p>${Date()}</p>`);
@@ -44,27 +53,37 @@ app.delete("/api/persons/:id", (req, res) => {
   const id = Number(req.params.id);
   persons = persons.filter((person) => person.id !== id);
 
-  res.status(404).end();
+  5;
 });
 
 app.post("/api/persons", (req, res) => {
-  let id = Math.floor(Math.random() * 99999);
-  console.log(req.headers);
   const person = req.body;
-  if (
-    !persons
-      .map((person) => {
-        console.log(person.name);
-        person.name;
-      })
-      .includes(person.content.name)
-  ) {
-    person.content.id = id;
-    console.log(person.content.name);
-    console.log(person.content);
-    persons = [...persons, person.content];
+  let bookDoesNotContainName =
+    persons.filter((item) => {
+      return item.name === person.name;
+    }).length === 0;
+
+  let reqHasData =
+    person.hasOwnProperty("name") && person.hasOwnProperty("number");
+
+  if (bookDoesNotContainName && reqHasData) {
+    person.id = Math.floor(Math.random() * 99999);
+    persons = [...persons, person];
+    res.json(person);
   } else {
-    console.log("asd");
+    if (!bookDoesNotContainName && !reqHasData) {
+      return res.status(400).json({
+        error: "name must be unique and request must to have requisite data",
+      });
+    } else if (!reqHasData) {
+      return res.status(400).json({
+        error: "request must to have requisite data",
+      });
+    } else {
+      return res.status(400).json({
+        error: "name must be unique",
+      });
+    }
   }
 });
 
