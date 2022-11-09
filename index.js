@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { response } = require("express");
 const express = require("express");
 const app = express();
@@ -22,18 +23,23 @@ app.get("/info", (req, res) => {
 
 app.get("/api/persons", (req, res) => {
   Person.find({}).then((person) => {
-    response.json(person);
+    res.json(person);
   });
 });
 
 app.get("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const person = persons.find((person) => person.id === id);
-  if (person) {
-    res.json(person);
-  } else {
-    res.status(204).end();
-  }
+  Person.findById(req.params.id)
+    .then((person) => {
+      if (person) {
+        res.json(person);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => {
+      console.log(error);
+      response.status(400).send({ error: "malformatted id" });
+    });
 });
 
 app.delete("/api/persons/:id", (req, res) => {
@@ -44,35 +50,54 @@ app.delete("/api/persons/:id", (req, res) => {
 });
 
 app.post("/api/persons", (req, res) => {
-  const person = req.body;
-  let bookDoesNotContainName =
-    persons.filter((item) => {
-      return item.name === person.name;
-    }).length === 0;
-
-  let reqHasData =
-    person.hasOwnProperty("name") && person.hasOwnProperty("number");
-
-  if (bookDoesNotContainName && reqHasData) {
-    person.id = Math.floor(Math.random() * 99999);
-    persons = [...persons, person];
-    res.json(person);
-  } else {
-    if (!bookDoesNotContainName && !reqHasData) {
-      return res.status(400).json({
-        error: "name must be unique and request must to have requisite data",
-      });
-    } else if (!reqHasData) {
-      return res.status(400).json({
-        error: "request must to have requisite data",
-      });
-    } else {
-      return res.status(400).json({
-        error: "name must be unique",
-      });
-    }
+  const body = req.body;
+  console.log(body.name);
+  if (body.name === undefined) {
+    return res.status(400).json({ error: "content missing" });
   }
+  console.log("asd");
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+  });
+
+  console.log(person);
+
+  person.save().then((savedPerson) => {
+    res.json(savedPerson);
+  });
 });
+
+// app.post("/api/persons", (req, res) => {
+//   const person = req.body;
+//   let bookDoesNotContainName =
+//     persons.filter((item) => {
+//       return item.name === person.name;
+//     }).length === 0;
+
+//   let reqHasData =
+//     person.hasOwnProperty("name") && person.hasOwnProperty("number");
+
+//   if (bookDoesNotContainName && reqHasData) {
+//     person.id = Math.floor(Math.random() * 99999);
+//     persons = [...persons, person];
+//     res.json(person);
+//   } else {
+//     if (!bookDoesNotContainName && !reqHasData) {
+//       return res.status(400).json({
+//         error: "name must be unique and request must to have requisite data",
+//       });
+//     } else if (!reqHasData) {
+//       return res.status(400).json({
+//         error: "request must to have requisite data",
+//       });
+//     } else {
+//       return res.status(400).json({
+//         error: "name must be unique",
+//       });
+//     }
+//   }
+// });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
