@@ -11,6 +11,16 @@ app.use(express.static("build"));
 app.use(express.json());
 app.use(cors());
 
+const requestLogger = (request, response, next) => {
+  console.log("Method:", request.method);
+  console.log("Path:  ", request.path);
+  console.log("Body:  ", request.body);
+  console.log("---");
+  next();
+};
+
+app.use(requestLogger);
+
 morgan.token("body", (req) => {
   return JSON.stringify(req.body);
 });
@@ -23,6 +33,8 @@ app.get("/info", (req, res) => {
 
 app.get("/api/persons", (req, res) => {
   Person.find({}).then((person) => {
+    console.log(person);
+    //console.log(res.json(person));
     res.json(person);
   });
 });
@@ -37,21 +49,22 @@ app.get("/api/persons/:id", (req, res) => {
       }
     })
     .catch((error) => {
-      console.log(error);
-      response.status(400).send({ error: "malformatted id" });
+      next(error);
     });
 });
 
 app.delete("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  persons = persons.filter((person) => person.id !== id);
-
-  5;
+  Person.findByIdAndRemove(req.params.id)
+    .then((result) => {
+      res.status(204).end();
+    })
+    .catch((error) => next(error));
 });
 
 app.post("/api/persons", (req, res) => {
   const body = req.body;
   console.log(body.name);
+  Person.find({ name: body.name }).then((result) => console.log(result));
   if (body.name === undefined) {
     return res.status(400).json({ error: "content missing" });
   }
@@ -60,6 +73,23 @@ app.post("/api/persons", (req, res) => {
     name: body.name,
     number: body.number,
   });
+
+  const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: "unknown endpoint" });
+  };
+  app.use(unknownEndpoint);
+
+  const errorHandler = (error, request, response, next) => {
+    console.error(error.message);
+
+    if (error.name === "CastError") {
+      return response.status(400).send({ error: "malformatted id" });
+    }
+
+    next(error);
+  };
+
+  app.use(errorHandler);
 
   console.log(person);
 
